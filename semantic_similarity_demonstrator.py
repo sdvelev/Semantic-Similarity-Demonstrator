@@ -61,7 +61,7 @@ def get_property_values(qid, properties):
         if not prop.upper().startswith('P'):
             continue
         prop_code = prop
-        filters.append(f"OPTIONAL {{ wd:{qid} wdt:{prop_code} ?val_{prop_code} }}")
+        filters.append(f"wd:{qid} wdt:{prop_code} ?val_{prop_code}.\n")
     if not filters:
         return {}
 
@@ -72,13 +72,11 @@ def get_property_values(qid, properties):
       {' '.join(filters)}
     }}
     '''
-    print(query)
     results = sparql_query(query)
     values = {}
     if results['results']['bindings']:
         for key, val in results['results']['bindings'][0].items():
             values[key.replace('val_', '')] = val['value']
-    print(values)
     return values
 
 def get_matching_humans(properties_dict):
@@ -97,7 +95,6 @@ def get_matching_humans(properties_dict):
       FILTER(LANG(?label) = 'en')
     }} LIMIT 100
     '''
-    print(query)
     results = sparql_query(query)
     return [(r['person']['value'].split('/')[-1], r['label']['value']) for r in results['results']['bindings']]
 
@@ -141,7 +138,7 @@ prop_input = st.text_input("**Enter Wikidata properties to match (e.g., P19, P10
 limit = st.slider("**How many people to compare to?**", 1, 20, 10)
 
 if st.button("Find and Compare") and person_label:
-    with st.spinner("Comparing from Wikidata5m..."):
+    with st.spinner("Comparing from Wikidata5m and DBpedia..."):
         person_qid = get_person_qid_by_label(person_label)
         if not person_qid:
             st.error("Could not find the specified person in Wikidata5m.")
@@ -152,7 +149,6 @@ if st.button("Find and Compare") and person_label:
                 st.warning("No matching property values found for the person.")
             else:
                 matches = get_matching_humans(prop_values)
-                print(matches)
                 matches = [m for m in matches if m[0] != person_qid]
 
                 sim = EntitySimilarity()
@@ -164,8 +160,7 @@ if st.button("Find and Compare") and person_label:
                         score = sim.similarity(dbpedia_uri, target_dbpedia)
                     except:
                         score = 0.0
-                    img = get_image_url_from_dbpedia(label)
-                    rows.append((label, score, img))
+                    rows.append((label, score, ""))
 
                 rows.sort(key=lambda x: -x[1])
 
@@ -174,8 +169,10 @@ if st.button("Find and Compare") and person_label:
                 for name, score, img in rows[:limit]:
                     col1, col2 = st.columns([1, 4])
                     with col1:
+                        img = get_image_url_from_dbpedia(name)
                         if img and is_valid_image_url(img):
                             st.image(img, width=80)
+
                     with col2:
                         st.markdown(f"**{counter}. {name}**\n\nSimilarity: {score:.4f}")
                         counter += 1
