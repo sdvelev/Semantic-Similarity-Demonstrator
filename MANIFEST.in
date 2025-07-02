@@ -1,0 +1,7 @@
+include requirements.txt
+include test-requirements.txt
+include README.md
+include LICENSE.txt
+graft sematch/dataset/aspect
+graft sematch/dataset/wordsim
+graft sematch/models
